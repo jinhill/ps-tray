@@ -114,6 +114,15 @@ function UpdateTrayIcon {
     $notifyIcon.Icon = [System.Drawing.Icon]::new($iconPath)
 }
 
+# 获取当前脚本的进程名
+$currentProcessName = [System.Diagnostics.Process]::GetCurrentProcess().ProcessName
+
+# 检查是否有两个或以上的进程在运行
+$processes = Get-Process -Name $currentProcessName -ErrorAction SilentlyContinue
+if ($processes.Count -ge 2) {
+    exit
+}
+
 # 创建托盘图标
 $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
 # 初始化托盘图标
