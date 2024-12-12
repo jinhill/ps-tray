@@ -130,6 +130,14 @@ UpdateTrayIcon
 $notifyIcon.Visible = $true
 $notifyIcon.Text = "$appName Control"
 
+# 添加鼠标点击事件处理
+$notifyIcon.Add_MouseClick({
+    param($sender, $e)
+    if ($e.Button -eq [System.Windows.Forms.MouseButtons]::Left) {
+        Start-Process "http://127.0.0.1:9095"
+    }
+})
+
 # 创建上下文菜单
 $contextMenu = New-Object System.Windows.Forms.ContextMenuStrip
 @(
