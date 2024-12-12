@@ -105,13 +105,27 @@ function JobAction {
             }
         }
     }
-    UpdateTrayIcon
+    UpdateTrayAndMenu
 }
 
-# 更新托盘图标
-function UpdateTrayIcon {
-    $iconPath = if (Get-Process -Name "sing-box-latest" -ErrorAction SilentlyContinue) { $iconPathRunning } else { $iconPathStopped }
+# 定义一个函数来更新托盘图标和菜单项状态
+function UpdateTrayAndMenu {
+    $process = Get-Process -Name "sing-box-latest" -ErrorAction SilentlyContinue
+    $iconPath = if ($process) { $iconPathRunning } else { $iconPathStopped }
     $notifyIcon.Icon = [System.Drawing.Icon]::new($iconPath)
+    
+    $startItem = $contextMenu.Items | Where-Object { $_.Text -eq "启动服务" }
+    $stopItem = $contextMenu.Items | Where-Object { $_.Text -eq "停止服务" }
+    
+    if ($process) {
+        # 如果服务正在运行
+	$startItem.Enabled = $false
+        $stopItem.Enabled = $true
+    } else {
+        # 如果服务停止
+        $startItem.Enabled = $true
+        $stopItem.Enabled = $false
+    }
 }
 
 # 获取当前脚本的进程名
@@ -126,7 +140,6 @@ if ($processes.Count -ge 2) {
 # 创建托盘图标
 $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
 # 初始化托盘图标
-UpdateTrayIcon
 $notifyIcon.Visible = $true
 $notifyIcon.Text = "$appName Control"
 
@@ -141,7 +154,7 @@ $notifyIcon.Add_MouseClick({
 # 创建上下文菜单
 $contextMenu = New-Object System.Windows.Forms.ContextMenuStrip
 @(
-	@{Text="控制面板"; Action={Start-Process "http://127.0.0.1:9095"}},
+    @{Text="控制面板"; Action={Start-Process "http://127.0.0.1:9095"}},
     @{Text="启动服务"; Action={JobAction -action "Start" -message "服务已启动"}},
     @{Text="停止服务"; Action={JobAction -action "Stop" -message "服务已停止"}},
     @{Text="检查更新"; Action={Update}},
