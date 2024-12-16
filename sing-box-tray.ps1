@@ -18,7 +18,7 @@ $iconPathStopped = Join-Path $workDirectory "sing-box-stop.ico"
 function Get-Version {
     param([string]$source)
     if ($source -eq "local") {
-		return (& $appPath version).Split("`n")[0].Split(" ")[2]
+        return (& $appPath version).Split("`n")[0].Split(" ")[2]
     } elseif ($source -eq "latest") {
         $apiUrl = "https://api.github.com/repos/SagerNet/sing-box/tags"
         $response = Invoke-WebRequest -Uri $apiUrl -UseBasicParsing -ErrorAction SilentlyContinue
@@ -31,24 +31,25 @@ function Get-Version {
 
 # 比较版本号，返回布尔值表示是否需要更新
 function Compare-Version {
-
     param(
         [string]$localVersion,
         [string]$remoteVersion
     )
 
-    # 去掉 '-beta' 后缀，但保留版本号后面的数字部分
-    $localVersion = $localVersion -replace '-beta', ''
-    $remoteVersion = $remoteVersion -replace '-beta', ''
-	#Write-Host "本地版本1: $localVersion ,最新版本1: $remoteVersion " 
-    # 比较版本号
-    if ($localVersion -lt $remoteVersion) {
-        return $true  # 本地版本较低
-    } elseif ($localVersion -gt $remoteVersion) {
-        return $false  # 本地版本较高
-    }
+    # 去掉所有字母和横杠
+    $localVersion = $localVersion -replace '[a-zA-Z-]', ''
+    $remoteVersion = $remoteVersion -replace '[a-zA-Z-]', ''
 
-    return $false  # 两个版本相同
+    # 转换为System.Version对象进行比较
+    $localVerObj = [System.Version]::Parse($localVersion)
+    $remoteVerObj = [System.Version]::Parse($remoteVersion)
+
+    # 比较版本号
+    if ($localVerObj -lt $remoteVerObj) {
+        return $true  # 本地版本较低
+    } else {
+        return $false # 本地版本较高或相同
+    }
 }
 
 # 更新操作
@@ -66,11 +67,12 @@ function Update {
                 $downloadUrl = "https://github.com/SagerNet/sing-box/releases/download/v$latestVersion/sing-box-$latestVersion-windows-amd64.zip"
                 $zipFile = Join-Path $workDirectory "sing-box.zip"
                 Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile -ErrorAction Stop
+				
+                JobAction -action "Stop"
                 
                 $tempDir = Join-Path $workDirectory "temp"
                 Expand-Archive -Path $zipFile -DestinationPath $tempDir -Force -ErrorAction Stop
                 
-                JobAction -action "Stop"
                 Copy-Item -Path (Join-Path $tempDir "sing-box-$latestVersion-windows-amd64\sing-box.exe") -Destination $appPath -Force
                 
                 Remove-Item -Path $tempDir -Recurse -Force
@@ -119,7 +121,7 @@ function UpdateTrayAndMenu {
     
     if ($process) {
         # 如果服务正在运行
-	$startItem.Enabled = $false
+	    $startItem.Enabled = $false
         $stopItem.Enabled = $true
     } else {
         # 如果服务停止
@@ -157,6 +159,13 @@ $contextMenu = New-Object System.Windows.Forms.ContextMenuStrip
     @{Text="控制面板"; Action={Start-Process "http://127.0.0.1:9095"}},
     @{Text="启动服务"; Action={JobAction -action "Start" -message "服务已启动"}},
     @{Text="停止服务"; Action={JobAction -action "Stop" -message "服务已停止"}},
+	@{Text="配置文件"; Action={
+        if (Test-Path $configPath) {
+            Start-Process $configPath
+        } else {
+            [System.Windows.Forms.MessageBox]::Show("配置文件不存在。", "错误", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        }
+    }},
     @{Text="检查更新"; Action={Update}},
     @{Text="退出"; Action={
         JobAction -action "Stop"
