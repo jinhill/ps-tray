@@ -93,12 +93,12 @@ function JobAction {
     $process = Get-Process -Name "sing-box-latest" -ErrorAction SilentlyContinue
     switch ($action) {
         "Start" {
-            if (-not $process) {
-                Start-Process -FilePath $appPath -ArgumentList "run", "-c", $configPath, "-D", $workDirectory -WindowStyle Hidden
-                if ($message) { [System.Windows.Forms.MessageBox]::Show($message, $appName) }
-            } else {
-                [System.Windows.Forms.MessageBox]::Show("服务已在运行", $appName)
+            if ($process) {
+                Stop-Process -Id $process.Id -Force
+                Start-Sleep -Seconds 1 # Wait for 1 seconds
             }
+            Start-Process -FilePath $appPath -ArgumentList "run", "-c", $configPath, "-D", $workDirectory -WindowStyle Hidden
+            if ($message) { [System.Windows.Forms.MessageBox]::Show($message, $appName) }
         }
         "Stop" {
             if ($process) {
@@ -116,16 +116,16 @@ function UpdateTrayAndMenu {
     $iconPath = if ($process) { $iconPathRunning } else { $iconPathStopped }
     $notifyIcon.Icon = [System.Drawing.Icon]::new($iconPath)
     
-    $startItem = $contextMenu.Items | Where-Object { $_.Text -eq "启动服务" }
+    $startItem = $contextMenu.Items | Where-Object {  $_.Text -eq "启动服务" -or $_.Text -eq "重启服务" }
     $stopItem = $contextMenu.Items | Where-Object { $_.Text -eq "停止服务" }
     
     if ($process) {
         # 如果服务正在运行
-	    $startItem.Enabled = $false
+	$startItem.Text = "重启服务"
         $stopItem.Enabled = $true
     } else {
         # 如果服务停止
-        $startItem.Enabled = $true
+	$startItem.Text = "启动服务"
         $stopItem.Enabled = $false
     }
 }
